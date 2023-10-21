@@ -1,23 +1,12 @@
 import { Effect } from 'effect'
-import { NextFunction, Request, Response, Router } from 'express'
-import { validationResult, ValidationChain } from 'express-validator'
+import { Router, Request, Response } from 'express'
+import { UnitEffect, RawEffect } from 'src/utils/effect.type'
 
 export interface Controller {
-  routes(router: Router): Effect.Effect<never, never, void>
+  routes(router: Router): UnitEffect
 }
 
-export const validate = (validations: ValidationChain[]) => {
-  return async (req: Request, res: Response, next: NextFunction) => {
-    for (let validation of validations) {
-      const result = await validation.run(req)
-      if (result.context.errors.length) break
-    }
-
-    const errors = validationResult(req).array()
-    if (!errors.length) {
-      return next()
-    }
-
-    res.status(400).json({ errors })
-  }
-}
+export const runLogic =
+  <E, A>(logic: (req: Request, res: Response) => RawEffect<E, A>) =>
+  (req: Request, res: Response) =>
+    Effect.runPromise(logic(req, res))

@@ -1,30 +1,43 @@
 import { Request, Router } from 'express'
 import { Response } from 'express'
-import { Effect } from 'effect'
-import { Controller, validate } from '../../../infrastructure/controller'
+import { Effect, Either } from 'effect'
+import { Controller, runLogic } from '../../../infrastructure/controller'
 import { UserService } from './user.service'
 import { AuthService } from './auth.service'
-import { createUserPayloadRules } from '../domain/payloads/create-user.payload'
+import { createUserPayloadRules } from '../domain/user.payload'
+import { validateRequest } from '../../../infrastructure/validator'
+import { UnitEffect } from '../../../utils/effect.type'
 
 export const UserController = (userService: UserService, authService: AuthService): Controller => {
-  const routes = (router: Router): Effect.Effect<never, never, void> => {
-    router.get('/users', (_, res: Response) => {
-      Effect.runPromise(userService.findAll()).then(users => res.json(users))
-    })
-
-    router.get('/users/:id', (req: Request, res: Response) => {
-      const { id } = req.params
-      Effect.runPromise(userService.findOne(id)).then(user => res.json(user))
-    })
-
-    router.post('/users', validate(createUserPayloadRules), (req: Request, res: Response) => {
-      Effect.runPromise(authService.createUser(req.body))
-        .then(user => res.json(user))
-        .catch(error => res.status(400).json({ error: error.message }))
-    })
+  const routes = (router: Router): UnitEffect => {
+    router.get('/users', runLogic(getUsers))
+    router.get('/users/:id', runLogic(getUser))
+    router.post('/users', validateRequest(createUserPayloadRules), runLogic(createUser))
 
     return Effect.unit
   }
+
+  const getUsers = (_: Request, res: Response): UnitEffect =>
+    Effect.gen(function* (_) {
+      const users = yield* _(userService.findAll())
+      res.json(users)
+    })
+
+  const getUser = (req: Request, res: Response): UnitEffect =>
+    Effect.gen(function* (_) {
+      const { id } = req.params
+      const user = yield* _(userService.findOne(id))
+      res.json(user)
+    })
+
+  const createUser = (req: Request, res: Response): UnitEffect =>
+    Effect.gen(function* (_) {
+      const result = yield* _(Effect.either(authService.createUser(req.body)))
+      Either.match(result, {
+        onLeft: error => res.status(400).json({ error }),
+        onRight: user => res.json(user)
+      })
+    })
 
   return { routes }
 }

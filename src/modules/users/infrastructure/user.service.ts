@@ -1,25 +1,24 @@
 import { PrismaClient, User } from '@prisma/client'
 import { match, P } from 'ts-pattern'
 import { Effect } from 'effect'
-import { PrismaErrorCode } from '../../../infrastructure/prisma.error'
-import { CreateUserPayload } from '../domain/payloads/create-user.payload'
-import { UserError } from '../domain/errors/user.error'
-import { UserAlreadyExistsError } from '../domain/errors/user-already-exists.error'
-import { DatabaseError } from '../domain/errors/database.error'
+import { PrismaErrorCode } from '../../../infrastructure/db/prisma.error'
+import { CreateUserPayload } from '../domain/user.payload'
+import { CreateUserError } from '../domain/user.error'
+import { RawEffect, SafeEffect } from 'src/utils/effect.type'
 
 export interface UserService {
-  findAll(): Effect.Effect<never, never, User[]>
-  findOne(id: string): Effect.Effect<never, never, User | null>
-  create(payload: CreateUserPayload): Effect.Effect<never, UserError, User>
+  findAll(): SafeEffect<User[]>
+  findOne(id: string): SafeEffect<User | null>
+  create(payload: CreateUserPayload): RawEffect<CreateUserError, User>
 }
 
 export const UserService = (prisma: PrismaClient): UserService => {
-  const findAll = (): Effect.Effect<never, never, User[]> => Effect.promise(() => prisma.user.findMany())
+  const findAll = (): SafeEffect<User[]> => Effect.promise(() => prisma.user.findMany())
 
-  const findOne = (id: string): Effect.Effect<never, never, User | null> =>
+  const findOne = (id: string): SafeEffect<User | null> =>
     Effect.promise(() => prisma.user.findUnique({ where: { id } }))
 
-  const create = (payload: CreateUserPayload): Effect.Effect<never, UserError, User> => {
+  const create = (payload: CreateUserPayload): RawEffect<CreateUserError, User> => {
     const data = {
       ...payload,
       updatedAt: new Date()
@@ -27,8 +26,8 @@ export const UserService = (prisma: PrismaClient): UserService => {
 
     const errorHandler = (error: unknown) =>
       match(error)
-        .with({ code: PrismaErrorCode.UniqueConstraintViolation }, () => new UserAlreadyExistsError())
-        .with(P.any, () => new DatabaseError())
+        .with({ code: PrismaErrorCode.UniqueConstraintViolation }, () => CreateUserError.UserAlreadyExists)
+        .with(P.any, () => CreateUserError.UnknownDatabaseError)
         .run()
 
     return Effect.tryPromise({
