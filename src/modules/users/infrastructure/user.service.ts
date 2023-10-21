@@ -1,7 +1,7 @@
 import { PrismaClient, User } from '@prisma/client'
 import { match, P } from 'ts-pattern'
 import { Effect } from 'effect'
-import { PrismaErrorCode } from '../../../domain/prisma.error'
+import { PrismaErrorCode } from '../../../infrastructure/prisma.error'
 import { CreateUserPayload } from '../domain/payloads/create-user.payload'
 import { UserError } from '../domain/errors/user.error'
 import { UserAlreadyExistsError } from '../domain/errors/user-already-exists.error'
