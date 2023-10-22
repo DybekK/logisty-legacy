@@ -36,6 +36,7 @@
     "express-validator": "^7.0.1",
     "helmet": "^7.0.0",
     "morgan": "^1.10.0",
+    "osrm-rest-client": "^0.1.7",
     "ts-pattern": "^5.0.5"
   }
 }

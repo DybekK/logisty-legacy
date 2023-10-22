@@ -27,7 +27,7 @@ export const UserService = (prisma: PrismaClient): UserService => {
     const errorHandler = (error: unknown) =>
       match(error)
         .with({ code: PrismaErrorCode.UniqueConstraintViolation }, () => CreateUserError.UserAlreadyExists)
-        .with(P.any, () => CreateUserError.UnknownDatabaseError)
+        .with(P._, () => CreateUserError.UnknownDatabaseError)
         .run()
 
     return Effect.tryPromise({

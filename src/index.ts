@@ -5,6 +5,11 @@ import { PrismaClient } from '@prisma/client'
 import { AuthService } from './modules/users/infrastructure/auth.service'
 import { UserService } from './modules/users/infrastructure/user.service'
 import { UserController } from './modules/users/infrastructure/user.controller'
+import { OSRMService } from './infrastructure/osrm/osrm.service'
+import { OSRM } from 'osrm-rest-client'
+import { RouteController } from './modules/routes/infrastructure/route.controller'
+import { initControllers } from './infrastructure/controller'
+import { RouteService } from './modules/routes/infrastructure/route.service'
 
 const app = express()
 const router = Router()
@@ -14,12 +19,19 @@ app.use(helmet())
 app.use(morgan('tiny'))
 app.use('/v1', router)
 
+// external services
 const prisma = new PrismaClient()
+const osrm = OSRMService(OSRM())
 
+// services
 const userService = UserService(prisma)
 const authService = AuthService(userService)
-const userController = UserController(userService, authService)
+const routeService = RouteService(osrm)
 
-Array.from([userController]).forEach(controller => controller.routes(router))
+// controllers
+const userController = UserController(userService, authService)
+const routeController = RouteController(routeService)
+
+initControllers([userController, routeController], router)
 
 app.listen(3000, () => console.log('Server started on port 3000'))
